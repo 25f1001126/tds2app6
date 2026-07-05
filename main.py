@@ -25,6 +25,8 @@ idempotency_store = {}
 rate_store = defaultdict(deque)
 
 # ---------------- RATE LIMIT MIDDLEWARE ----------------
+from fastapi.responses import JSONResponse
+
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
     client_id = request.headers.get("X-Client-Id", "anonymous")
@@ -32,14 +34,13 @@ async def rate_limit(request: Request, call_next):
     now = time.time()
     q = rate_store[client_id]
 
-    # remove expired timestamps
     while q and now - q[0] > WINDOW:
         q.popleft()
 
     if len(q) >= RATE_LIMIT:
-        return HTTPException(
+        return JSONResponse(
             status_code=429,
-            detail="Rate limit exceeded",
+            content={"detail": "Rate limit exceeded"},
             headers={"Retry-After": "10"}
         )
 
